@@ -1,0 +1,356 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © koffeekenny & fadi
+
+//@version=6
+indicator('SDev', overlay = true, max_lines_count = 500, max_labels_count = 500, max_bars_back=5000)//, dynamic_requests = true)
+type Settings
+    string      htf
+    bool        mirror
+    int         max
+    int         lookback
+    string      override1
+    float       overridevalue1
+    string      override2
+    float       overridevalue2
+    string      override3
+    float       overridevalue3
+    string      override4
+    float       overridevalue4
+    string      override5
+    float       overridevalue5
+
+type FibLevels
+    bool        show
+    int         padding
+    bool        useLog
+    bool        use_background
+    int         fill_percent
+    bool        show_level
+    bool        show_price
+    string      label_size
+
+    bool        fib1
+    float       fib1_level
+    color       fib1_color
+    string      fib1_style
+    int         fib1_size
+    bool        fib2
+    float       fib2_level
+    color       fib2_color
+    string      fib2_style
+    int         fib2_size
+    bool        fib3
+    float       fib3_level
+    color       fib3_color
+    string      fib3_style
+    int         fib3_size
+    bool        fib4
+    float       fib4_level
+    color       fib4_color
+    string      fib4_style
+    int         fib4_size
+    bool        fib5
+    float       fib5_level
+    color       fib5_color
+    string      fib5_style
+    int         fib5_size
+    bool        fib6
+    float       fib6_level
+    color       fib6_color
+    string      fib6_style
+    int         fib6_size
+    bool        fib7
+    float       fib7_level
+    color       fib7_color
+    string      fib7_style
+    int         fib7_size
+    bool        fib8
+    float       fib8_level
+    color       fib8_color
+    string      fib8_style
+    int         fib8_size
+    bool        fib9
+    float       fib9_level
+    color       fib9_color
+    string      fib9_style
+    int         fib9_size
+
+type fib
+    float       level
+    float       price
+    color       color
+    string      style
+    int         size
+    line        ln
+    label       lbl
+    linefill    fl
+
+type Daily
+    array<fib>  fibs
+    float       price
+    int         time
+    int         time_last
+
+settings_general                            = 'General Settings ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+settings_fibs                               = 'SDev Level Settings ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+settings_override                           = 'Overrides ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+var Settings  settings                      = Settings.new()
+var FibLevels fiblevels                     = FibLevels.new()
+settings.htf                                := input.timeframe('D', 'Higher Timeframe', group = settings_general)
+settings.max                                := input.int(1, 'Show levels for last X days', group = settings_general, minval=1, maxval=50)
+settings.lookback                           := input.int(5000, 'Based on last X periods', group = settings_general, minval=2, maxval=5000)
+settings.mirror                             := input.bool(true, 'Mirror levels on the other side', group = settings_fibs)
+//fiblevels.useLog                            := input.bool(true, 'Use Log scale for calculations', group = settings_general)
+fiblevels.fib1                              := input.bool(true, '', group = settings_fibs, inline = '1')
+fiblevels.fib1_level                        := input.float(0, '', group = settings_fibs, inline = '1')
+fiblevels.fib1_color                        := input.color(color.white, '', group = settings_fibs, inline = '1')
+fiblevels.fib1_style                        := input.string('⎯⎯⎯', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '1',display = display.none)
+fiblevels.fib1_size                         := input.int(1, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '1',display = display.none)
+fiblevels.fib2                              := input.bool(true, '', group = settings_fibs, inline = '2',display = display.none)
+fiblevels.fib2_level                        := input.float(0.5, '', group = settings_fibs, inline = '2', display = display.none)
+fiblevels.fib2_color                        := input.color(color.black, '', group = settings_fibs, inline = '2')
+fiblevels.fib2_style                        := input.string('····', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '2', display = display.none)
+fiblevels.fib2_size                         := input.int(1, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '2',display = display.none)
+fiblevels.fib3                              := input.bool(true, '', group = settings_fibs, inline = '3',display = display.none)
+fiblevels.fib3_level                        := input.float(1, '', group = settings_fibs, inline = '3',display = display.none)
+fiblevels.fib3_color                        := input.color(color.black, '', group = settings_fibs, inline = '3',display = display.none)
+fiblevels.fib3_style                        := input.string('⎯⎯⎯', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '3',display = display.none)
+fiblevels.fib3_size                         := input.int(2, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '3',display = display.none)
+fiblevels.fib4                              := input.bool(true, '', group = settings_fibs, inline = '4',display = display.none)
+fiblevels.fib4_level                        := input.float(1.5, '', group = settings_fibs, inline = '4',display = display.none)
+fiblevels.fib4_color                        := input.color(color.black, '', group = settings_fibs, inline = '4',display = display.none)
+fiblevels.fib4_style                        := input.string('····', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '4',display = display.none)
+fiblevels.fib4_size                         := input.int(1, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '4',display = display.none)
+fiblevels.fib5                              := input.bool(true, '', group = settings_fibs, inline = '5',display = display.none)
+fiblevels.fib5_level                        := input.float(2, '', group = settings_fibs, inline = '5',display = display.none)
+fiblevels.fib5_color                        := input.color(color.black, '', group = settings_fibs, inline = '5',display = display.none)
+fiblevels.fib5_style                        := input.string('⎯⎯⎯', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '5',display = display.none)
+fiblevels.fib5_size                         := input.int(2, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '5',display = display.none)
+fiblevels.fib6                              := input.bool(false, '', group = settings_fibs, inline = '6',display = display.none)
+fiblevels.fib6_level                        := input.float(2.5, '', group = settings_fibs, inline = '6', display = display.none)
+fiblevels.fib6_color                        := input.color(color.black, '', group = settings_fibs, inline = '6', display = display.none)
+fiblevels.fib6_style                        := input.string('····', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '6', display = display.none)
+fiblevels.fib6_size                         := input.int(1, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '6', display = display.none)
+fiblevels.fib7                              := input.bool(false, '', group = settings_fibs, inline = '7', display = display.none)
+fiblevels.fib7_level                        := input.float(3, '', group = settings_fibs, inline = '7',display = display.none)
+fiblevels.fib7_color                        := input.color(color.black, '', group = settings_fibs, inline = '7', display = display.none)
+fiblevels.fib7_style                        := input.string('⎯⎯⎯', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '7', display = display.none)
+fiblevels.fib7_size                         := input.int(2, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '7',display = display.none)
+fiblevels.fib8                              := input.bool(false, '', group = settings_fibs, inline = '8', display = display.none)
+fiblevels.fib8_level                        := input.float(3.5, '', group = settings_fibs, inline = '8', display = display.none)
+fiblevels.fib8_color                        := input.color(color.black, '', group = settings_fibs, inline = '8', display = display.none)
+fiblevels.fib8_style                        := input.string('····', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '8', display = display.none)
+fiblevels.fib8_size                         := input.int(1, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '8', display = display.none)
+fiblevels.fib9                              := input.bool(false, '', group = settings_fibs, inline = '9', display = display.none)
+fiblevels.fib9_level                        := input.float(4, '', group = settings_fibs, inline = '9', display = display.none)
+fiblevels.fib9_color                        := input.color(color.black, '', group = settings_fibs, inline = '9', display = display.none)
+fiblevels.fib9_style                        := input.string('⎯⎯⎯', '', options = ['⎯⎯⎯', '----', '····'], group = settings_fibs, inline = '9', display = display.none)
+fiblevels.fib9_size                         := input.int(2, '', options = [1, 2, 3, 4], group = settings_fibs, inline = '9', display = display.none)
+
+fiblevels.use_background                    := input.bool(false, "Background transparency    ", group = settings_fibs, inline = 'fill')
+fiblevels.fill_percent                      := input.int(99, '', options = [99, 97, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50], group = settings_fibs, inline = 'fill', display = display.none)
+fiblevels.padding                           := input.int(1, 'Fib levels padding', group = settings_fibs, display = display.none)
+fiblevels.label_size                        := input.string(size.small, 'Label size', [size.tiny, size.small, size.normal, size.large, size.huge], group = settings_fibs, display = display.none)
+fiblevels.show_level                        := input.bool(true, 'Level value', group = settings_fibs)
+fiblevels.show_price                        := input.bool(true, 'Price value', group = settings_fibs)
+settings.override1                          := input.string('', 'Override Symbol', group = settings_override, inline = 'o1')
+settings.overridevalue1                     := input.float(0, 'StDev', group = settings_override, inline = 'o1', display = display.none)
+settings.override2                          := input.string('', 'Override Symbol', group = settings_override, inline = 'o2')
+settings.overridevalue2                     := input.float(0, 'StDev', group = settings_override, inline = 'o2', display = display.none)
+settings.override3                          := input.string('', 'Override Symbol', group = settings_override, inline = 'o3')
+settings.overridevalue3                     := input.float(0, 'StDev', group = settings_override, inline = 'o3', display = display.none)
+settings.override4                          := input.string('', 'Override Symbol', group = settings_override, inline = 'o4')
+settings.overridevalue4                     := input.float(0, 'StDev', group = settings_override, inline = 'o4', display = display.none)
+settings.override5                          := input.string('', 'Override Symbol', group = settings_override, inline = 'o5')
+settings.overridevalue5                     := input.float(0, 'StDev', group = settings_override, inline = 'o5', display = display.none)
+
+color color_transparent = #00000000
+var array<Daily> daily  = array.new<Daily>()
+
+lineStyle(string style) =>
+    out = switch style
+        '----' => line.style_dashed
+        '····' => line.style_dotted
+        => line.style_solid
+    out
+
+method swap(array<fib> this, int i, int j) =>
+    temp = this.get(i)
+    this.set(i, this.get(j))
+    this.set(j, temp)
+
+method sort(array<fib> this) =>
+    size = this.size()
+    for i = 0 to size - 2
+        for j = 0 to size - 2 - i
+            if this.get(j).level > this.get(j + 1).level
+                this.swap(j, j + 1)
+
+getFibLevel(float level, float _price, color _color, string _style, int _size) =>
+    fib f           = fib.new()
+    f.level         := level
+    f.color         := _color
+    f.price         := _price
+    f.style         := _style
+    f.size          := _size
+    f.ln            := line.new(na, _price, na, _price, color=_color, style=lineStyle(f.style), xloc=xloc.bar_time, width = f.size)
+    f.lbl           := label.new(na, f.price, '', style = label.style_label_left, textcolor =  _color, color = color_transparent, size=fiblevels.label_size, xloc=xloc.bar_time)
+    f
+method calcFibs(Daily this, float price, float stdDev) =>
+    if this.fibs.size() == 0
+        if fiblevels.fib1
+            this.fibs.unshift(getFibLevel(fiblevels.fib1_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib1_level))) : price+(stdDev*fiblevels.fib1_level), fiblevels.fib1_color, fiblevels.fib1_style, fiblevels.fib1_size))
+            if settings.mirror and fiblevels.fib1_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib1_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib1_level)))) : price+(-1*(stdDev*fiblevels.fib1_level)), fiblevels.fib1_color, fiblevels.fib1_style, fiblevels.fib1_size))      
+        if fiblevels.fib2
+            this.fibs.unshift(getFibLevel(fiblevels.fib2_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib2_level))) : price+(stdDev*fiblevels.fib2_level), fiblevels.fib2_color, fiblevels.fib2_style, fiblevels.fib2_size))
+            if settings.mirror and fiblevels.fib2_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib2_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib2_level)))) : price+(-1*(stdDev*fiblevels.fib2_level)), fiblevels.fib2_color, fiblevels.fib2_style, fiblevels.fib2_size))
+
+        if fiblevels.fib3
+            this.fibs.unshift(getFibLevel(fiblevels.fib3_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib3_level))) : price+(stdDev*fiblevels.fib3_level), fiblevels.fib3_color, fiblevels.fib3_style, fiblevels.fib3_size))
+            if settings.mirror and fiblevels.fib3_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib3_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib3_level)))) : price+(-1*(stdDev*fiblevels.fib3_level)), fiblevels.fib3_color, fiblevels.fib3_style, fiblevels.fib3_size))
+
+        if fiblevels.fib4
+            this.fibs.unshift(getFibLevel(fiblevels.fib4_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib4_level))) : price+(stdDev*fiblevels.fib4_level), fiblevels.fib4_color, fiblevels.fib4_style, fiblevels.fib4_size))
+            if settings.mirror and fiblevels.fib4_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib4_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib4_level)))) : price+(-1*(stdDev*fiblevels.fib4_level)), fiblevels.fib4_color, fiblevels.fib4_style, fiblevels.fib4_size))
+
+        if fiblevels.fib5
+            this.fibs.unshift(getFibLevel(fiblevels.fib5_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib5_level))) : price+(stdDev*fiblevels.fib5_level), fiblevels.fib5_color, fiblevels.fib5_style, fiblevels.fib5_size))
+            if settings.mirror and fiblevels.fib5_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib5_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib5_level)))) : price+(-1*(stdDev*fiblevels.fib5_level)), fiblevels.fib5_color, fiblevels.fib5_style, fiblevels.fib5_size))
+
+        if fiblevels.fib6
+            this.fibs.unshift(getFibLevel(fiblevels.fib6_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib6_level))) : price+(stdDev*fiblevels.fib6_level), fiblevels.fib6_color, fiblevels.fib6_style, fiblevels.fib6_size))
+            if settings.mirror and fiblevels.fib6_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib6_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib6_level)))) : price+(-1*(stdDev*fiblevels.fib6_level)), fiblevels.fib6_color, fiblevels.fib6_style, fiblevels.fib6_size))
+
+        if fiblevels.fib7
+            this.fibs.unshift(getFibLevel(fiblevels.fib7_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib7_level))) : price+(stdDev*fiblevels.fib7_level), fiblevels.fib7_color, fiblevels.fib7_style, fiblevels.fib7_size))
+            if settings.mirror and fiblevels.fib7_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib7_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib7_level)))) : price+(-1*(stdDev*fiblevels.fib7_level)), fiblevels.fib7_color, fiblevels.fib7_style, fiblevels.fib7_size))
+
+        if fiblevels.fib8
+            this.fibs.unshift(getFibLevel(fiblevels.fib8_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib8_level))) : price+(stdDev*fiblevels.fib8_level), fiblevels.fib8_color, fiblevels.fib8_style, fiblevels.fib8_size))
+            if settings.mirror and fiblevels.fib8_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib8_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib8_level)))) : price+(-1*(stdDev*fiblevels.fib8_level)), fiblevels.fib8_color, fiblevels.fib8_style, fiblevels.fib8_size))
+
+        if fiblevels.fib9
+            this.fibs.unshift(getFibLevel(fiblevels.fib9_level, fiblevels.useLog ? math.exp(math.log(price+(stdDev*fiblevels.fib9_level))) : price+(stdDev*fiblevels.fib9_level), fiblevels.fib9_color, fiblevels.fib9_style, fiblevels.fib9_size))
+            if settings.mirror and fiblevels.fib9_level != 0
+                this.fibs.unshift(getFibLevel(-1*fiblevels.fib9_level, fiblevels.useLog ? math.exp(math.log(price+(-1*(stdDev*fiblevels.fib9_level)))) : price+(-1*(stdDev*fiblevels.fib9_level)), fiblevels.fib9_color, fiblevels.fib9_style, fiblevels.fib9_size))
+    this.fibs.sort()
+    this
+
+method fibAlert(Daily this) =>
+    for f in this.fibs
+        if f.level < 0 and ta.crossunder(low, f.price)
+            alert('Price crossed below StDev ' + str.tostring(f.level) + ' [' + syminfo.ticker + ']')
+            break
+        if f.level > 1 and ta.crossover(high, f.level)
+            alert('Price crossed above below StDev ' + str.tostring(f.level) + ' [' + syminfo.ticker + ']')
+            break
+
+method drawFibs(Daily this, int idx) =>
+    if this.fibs.size() > 0
+        for i=0 to this.fibs.size()-1
+            fib f = this.fibs.get(i)
+            string txt          = ''
+            string space_s      = ''
+            string space_e      = ''
+            int    padded       = this.time_last+(fiblevels.padding*(time-time[1]))
+        
+            if fiblevels.show_level 
+                txt := str.tostring(f.level)
+                space_s := ' ('
+                space_e := ')'
+
+            if fiblevels.show_price
+                txt := txt + space_s + str.format('{0,number,#,###.00}', f.price) + space_e
+
+            f.ln.set_color(f.color)
+            f.lbl.set_xy(padded, f.price)
+            if idx == 0
+                f.ln.set_xy1(this.time, f.price)
+                f.ln.set_xy2(padded, f.price)
+                f.lbl.set_text(txt)
+                if fiblevels.use_background 
+                    fib pf = this.fibs.get(i-1)
+                    f.fl := linefill.new(pf.ln, f.ln, color.new(f.color, fiblevels.fill_percent))
+            else
+                f.ln.set_x1(this.time)
+                f.ln.set_x2(this.time_last+(time-time[1]))
+                f.lbl.set_x(this.time_last)
+    this
+
+getDailyStDev() =>
+    float stdev = 0
+    switch str.lower(syminfo.ticker)
+        str.lower(settings.override1) =>
+            settings.overridevalue1
+        str.lower(settings.override2) =>
+            settings.overridevalue2
+        str.lower(settings.override3) =>
+            settings.overridevalue3
+        str.lower(settings.override4) =>
+            settings.overridevalue4
+        str.lower(settings.override5) =>
+            settings.overridevalue5
+        =>
+            // if there aren't 5000 bars, we will use the first bars
+            lookback = math.min(settings.lookback, bar_index)  // Roughly 252 trading days/year * 20 years
+            lookback := lookback <= 0 ? 1 : lookback
+            diff = ((close - open)/open)
+            ta.stdev(diff, lookback)
+
+method delete(array<fib> this) =>
+    for f in this
+        f.ln.delete()
+        f.lbl.delete()
+        f.fl.delete()
+
+method add(array<Daily> this, float price, int _time, float stdDev) =>
+    Daily d     = Daily.new()
+    d.price     := price
+    d.time      := _time
+    d.time_last := _time
+    d.fibs      := array.new<fib>()
+    d.calcFibs(price, stdDev)
+    this.unshift(d)
+
+    if this.size() > settings.max
+        Daily temp = this.pop()
+        temp.fibs.delete()
+
+method update(array<Daily> this, int _time) =>
+    if this.size() > 0
+        Daily f = this.first()
+        f.time_last := _time
+
+varip bool done = false
+var float factor = 0
+var float day_open = 0
+var int   day_time = 0
+//////////////////////////////////////////
+if true //timeframe.isintraday //and barstate.islast
+
+    //if not done
+    factor := request.security(syminfo.tickerid, settings.htf, getDailyStDev(), lookahead = barmerge.lookahead_on)
+    //done := true
+
+    bool newDay = bool(ta.change(time(settings.htf, "america/New_York")))
+    if bool(newDay)
+        if not bool(newDay[1])
+            daily.add(open, time, (factor * open))
+            day_open := open
+            day_time := time
+    daily.update(time)
+
+    if barstate.islast
+        for [i, day] in daily
+            day.drawFibs(i)
+        daily.first().fibAlert()
+
+
